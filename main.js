@@ -21,6 +21,10 @@ class Handler{
   async query(query, ...args){
     return new Promise((resolve, reject) => {
       let conn = this.getConnection()
+      if(!conn){
+        console.log("Could not run query, as there aren't any active connection. Fix and restart.")
+        return;
+      }
       conn.query.apply(conn, [query, args, (err, data) => {
         if(err){
           console.log(query)

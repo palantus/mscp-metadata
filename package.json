@@ -1,10 +1,10 @@
 {
-	"name": "mscp-metadata",
-	"version": "1.0.0",
-	"main" : "main.js",
-	"dependencies" : {
-    "mysql" : "*",
-    "mscp" : "*",
-    "searchqueryparser": "*"
-  }
+ "name": "mscp-metadata",
+ "version": "1.0.1",
+ "main": "main.js",
+ "dependencies": {
+  "mysql": "*",
+  "mscp": "*",
+  "searchqueryparser": "*"
+ }
 }
