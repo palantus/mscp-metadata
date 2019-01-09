@@ -309,6 +309,30 @@
           "description": ""
         }
       ]
+    },
+    {
+      "name": "findMulti",
+      "title": "Find using multiple queries",
+      "description": "",
+      "returntype": "array",
+      "namespace": "",
+      "default": "",
+      "args": [
+        {
+          "name": "queries",
+          "title": "Queries",
+          "type": "array",
+          "required": true,
+          "description": ""
+        },
+        {
+          "name": "fillMetadata",
+          "title": "Fill metadata",
+          "type": "boolean",
+          "required": false,
+          "description": ""
+        }
+      ]
     }
   ]
 }

@@ -189,6 +189,28 @@ class Handler{
     return result;
   }
 
+  async findMulti(queries, fillMetadata){
+    let queriesParsed = []
+
+    for(let q of queries){
+      try{
+        queriesParsed.push(this.global.queryParser.parse(q))
+      } catch(err){
+        console.log(query)
+        console.log(err)
+        return []
+      }
+    }
+
+    let sql = new Query2SQL().generate(queriesParsed)
+    let result = (await this.query(sql)).map((row) => row['entity'])
+
+    if(fillMetadata)
+      result = await this.fillMetadataMultiple(result)
+
+    return result;
+  }
+
   /* --------------------------------
                 Misc
   -------------------------------- */

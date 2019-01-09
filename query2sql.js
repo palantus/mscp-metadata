@@ -5,7 +5,17 @@ const mysql = require("mysql");
 class Query2Sql{
 
   generate(q){
-    let conditions = this.genConditionSQLQuery(q)
+    let conditions = '';
+
+    let queries = Array.isArray(q) ? q : [q];
+
+    for(let i = 0; i < queries.length; i++){
+      conditions += `${i>0?" AND " : ""} (${this.genConditionSQLQuery(queries[i])})`
+    }
+
+    if(!conditions)
+      conditions = "1=2";
+
     let query = `SELECT entity FROM (
                     SELECT entity FROM metadata_tags GROUP BY entity
                     UNION
