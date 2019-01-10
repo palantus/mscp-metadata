@@ -4,13 +4,28 @@ const mysql = require("mysql");
 
 class Query2Sql{
 
-  generate(q){
+  constructor(parser){
+    this.parser = parser;
+  }
+
+  generate(_queries){
+
+    let queries = Array.isArray(_queries) ? _queries : [_queries]
+    let queriesParsed = []
+
+    for(let q of queries){
+      try{
+        queriesParsed.push(this.parser.parse(q))
+      } catch(err){
+        console.log(q)
+        console.log(err)
+        throw "Invalid query: " + q
+      }
+    }
+
     let conditions = '';
-
-    let queries = Array.isArray(q) ? q : [q];
-
-    for(let i = 0; i < queries.length; i++){
-      conditions += `${i>0?" AND " : ""} (${this.genConditionSQLQuery(queries[i])})`
+    for(let i = 0; i < queriesParsed.length; i++){
+      conditions += `${i>0?" AND " : ""} (${this.genConditionSQLQuery(queriesParsed[i])})`
     }
 
     if(!conditions)
@@ -52,14 +67,16 @@ class Query2Sql{
         * prop:prop=val
         * tag:tag
         * id:id
+        * rel:id=type                       (type optional)
+        * reltype:type
         * *
+        * reltores:"subquery"               (relation to result of subquery)
+        * reltorestype:"reltype=subquery"   (relation to result of subquery with relation type)
 
       - Skal understøtte:
         * prop:prop<val
-        * rel:id=type                 (type optional)
-        * reltype:type
-        * relprop:reltype:prop:val    (property of related entity is "val")
-        * reltag:reltype:tag          (related entity has tag)
+        * relprop:reltype:prop:val          (property of related entity is "val")
+        * reltag:reltype:tag                (related entity has tag)
     */
 
   handleToken(token, tag){
@@ -83,8 +100,24 @@ class Query2Sql{
           let entity2 = mysql.escape(token.split('=')[0])
           let rel = mysql.escape(token.split('=')[1])
           return `EXISTS(SELECT entity FROM metadata_relations where entity = E.entity AND entity2 = ${entity2} AND rel = ${rel})`
+        } else {
+          return `EXISTS(SELECT entity FROM metadata_relations where entity = E.entity AND entity2 = ${mysql.escape(token)})`
         }
         break;
+
+      case "reltype":
+        return `EXISTS(SELECT entity FROM metadata_relations where entity = E.entity AND rel = ${mysql.escape(token)})`
+
+      case "reltores":
+        return `EXISTS(SELECT entity FROM metadata_relations where entity = E.entity AND entity2 IN (${this.generate(token)}))`
+
+      case "reltorestype":
+        let equalsPos = token.indexOf("=")
+        if(!equalsPos) throw "Invalid query"
+        let rel = mysql.escape(token.substring(0, equalsPos))
+        let subquery = token.substring(equalsPos+1)
+
+        return `EXISTS(SELECT entity FROM metadata_relations where entity = E.entity AND entity2 IN (${this.generate(subquery)}) AND rel = ${rel})`
 
       case "id":
         return `E.entity = ${mysql.escape(token)}`

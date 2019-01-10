@@ -171,16 +171,7 @@ class Handler{
               Query
   -------------------------------- */
   async find(query, fillMetadata){
-    let q = {}
-    try{
-      q = this.global.queryParser.parse(query)
-    } catch(err){
-      console.log(query)
-      console.log(err)
-      return []
-    }
-
-    let sql = new Query2SQL().generate(q)
+    let sql = new Query2SQL(this.global.queryParser).generate(query)
     let result = (await this.query(sql)).map((row) => row['entity'])
 
     if(fillMetadata)
@@ -190,19 +181,8 @@ class Handler{
   }
 
   async findMulti(queries, fillMetadata){
-    let queriesParsed = []
 
-    for(let q of queries){
-      try{
-        queriesParsed.push(this.global.queryParser.parse(q))
-      } catch(err){
-        console.log(query)
-        console.log(err)
-        return []
-      }
-    }
-
-    let sql = new Query2SQL().generate(queriesParsed)
+    let sql = new Query2SQL().generate(queries)
     let result = (await this.query(sql)).map((row) => row['entity'])
 
     if(fillMetadata)
