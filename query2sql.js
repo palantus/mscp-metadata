@@ -57,6 +57,8 @@ class Query2Sql{
         return this.handleToken(e.token, e.tag)
       case "par":
         return "(" + this.handleExp(e.e) + ")"
+      case "not":
+        return "NOT(" + this.handleExp(e.e) + ")"
       default:
         return "1=0"
     }
