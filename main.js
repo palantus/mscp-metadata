@@ -1,7 +1,8 @@
 "use strict"
 
 const MSCP = require("mscp")
-const mysql = require("mysql")
+var mysql
+var sqlite
 const path = require("path")
 const fs = require("fs");
 const SearchQueryParser = require("searchqueryparser")
@@ -13,6 +14,11 @@ class Handler{
               Basic
   -------------------------------- */
   async initFirst(){
+    this.global.dbOptions = this.mscp.setupHandler.setup.database
+
+    if(!this.global.dbOptions.driver)
+      throw "Please select database driver (either mysql or sqlite) in setup.json"
+
     this.global.queryParser = new SearchQueryParser()
     await this.global.queryParser.init()
     this.initTables()
@@ -25,32 +31,63 @@ class Handler{
         console.log("Could not run query, as there aren't any active connection. Fix and restart.")
         return;
       }
-      conn.query.apply(conn, [query, args, (err, data) => {
-        if(err){
-          console.log(query)
-          console.log(args)
-          console.log(err)
-          reject(err)
-        } else {
-          resolve(data)
-        }
-      }])
+      if(this.global.dbOptions.driver == "mysql"){
+        conn.query.apply(conn, [query, args, (err, data) => {
+          if(err){
+            console.log(query)
+            console.log(args)
+            console.log(err)
+            reject(err)
+          } else {
+            resolve(data)
+          }
+        }])
+      } else if(this.global.dbOptions.driver == "sqlite"){
+        console.log([query].concat(args))
+        conn.all.apply(conn, [query].concat(args).concat([(err, res) => {
+          if(err){
+            console.log(err)
+            reject(err)
+          } else {
+            resolve(res)
+          }
+        }]))
+      }
     })
   }
 
   getConnection(){
-    if(this.global.dbPool === undefined){
-      this.dbOptions = this.mscp.setupHandler.setup.database
-      if(typeof this.dbOptions === "object"){
-        this.dbOptions.connectionLimit = 10
-        this.dbOptions.multipleStatements = true
-        //this.dbOptions.debug = true
-        this.global.dbPool = mysql.createPool(this.dbOptions)
-      } else {
-        console.log("ERROR: Missing db options")
+    if(this.global.dbOptions.driver == "mysql"){
+      if(!mysql)
+        mysql = require("mysql")
+
+      if(this.global.dbPool === undefined){
+        this.dbOptions = this.mscp.setupHandler.setup.database
+        if(typeof this.dbOptions === "object"){
+          this.dbOptions.connectionLimit = 10
+          this.dbOptions.multipleStatements = true
+          //this.dbOptions.debug = true
+          this.global.dbPool = mysql.createPool(this.dbOptions)
+        } else {
+          console.log("ERROR: Missing db options")
+        }
       }
+      return this.global.dbPool
+    } else if(this.global.dbOptions.driver == "sqlite"){
+      if(!sqlite)
+        sqlite = require("sqlite3").verbose();
+
+      if(!this.global.db){
+        let filename = this.global.dbOptions.file
+        if(!filename)
+          filename = "metadata.db"
+
+        console.log(`Using database file: ${filename}`)
+        let dbFile = path.resolve(filename)
+        this.global.db = new sqlite.Database(dbFile);
+      }
+      return this.global.db;
     }
-    return this.global.dbPool
   }
 
   async initTables(){
@@ -64,7 +101,7 @@ class Handler{
                 Tags
   -------------------------------- */
   async addTag(id, tag){
-    await this.query("INSERT IGNORE INTO metadata_tags(entity, tag) VALUES(?)", [id, tag])
+    await this.query(`INSERT ${this.global.dbOptions.driver == "sqlite"?"OR ":""}IGNORE INTO metadata_tags(entity, tag) VALUES(?, ?)`, id, tag)
     return this.getTags(id)
   }
 
@@ -132,8 +169,14 @@ class Handler{
         args.push(prop)
       }
       else {
-        query += "INSERT INTO metadata_properties(entity, property, value) VALUES(?) on duplicate key update value = ?;"
-        args.push([id, prop, properties[prop]], properties[prop])
+        if(this.global.dbOptions.driver == "sqlite")
+          query += "INSERT INTO metadata_properties(entity, property, value) VALUES(?, ?, ?) ON CONFLICT(entity, property) DO UPDATE SET value = ?;"
+        else
+          query += "INSERT INTO metadata_properties(entity, property, value) VALUES(?, ?, ?) on duplicate key update value = ?;"
+        args.push(id)
+        args.push(prop)
+        args.push(properties[prop])
+        args.push(properties[prop])
       }
     }
     args.unshift(query)
@@ -152,9 +195,9 @@ class Handler{
   }
 
   async addRelation(id, id2, rel, bothWays){
-    await this.query("INSERT IGNORE INTO metadata_relations(entity, entity2, rel) VALUES(?)", [id, id2, rel])
+    await this.query(`INSERT ${this.global.dbOptions.driver == "sqlite"?"OR ":""}IGNORE INTO metadata_relations(entity, entity2, rel) VALUES(?, ?, ?)`, id, id2, rel)
     if(bothWays === true)
-      await this.query("INSERT IGNORE INTO metadata_relations(entity, entity2, rel) VALUES(?)", [id2, id, rel])
+      await this.query(`INSERT ${this.global.dbOptions.driver == "sqlite"?"OR ":""}IGNORE INTO metadata_relations(entity, entity2, rel) VALUES(?, ?, ?)`, id2, id, rel)
     return null
   }
 
