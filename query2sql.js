@@ -93,7 +93,10 @@ class Query2Sql{
         if(token.indexOf("=") >= 0){
           let prop = mysql.escape(token.split('=')[0])
           let val = mysql.escape(token.split('=')[1])
-          return `EXISTS(SELECT entity FROM metadata_properties where entity = E.entity AND property = ${prop} AND value = ${val})`
+          if(val == "''")
+            return `NOT EXISTS(SELECT entity FROM metadata_properties where entity = E.entity AND property = ${prop})`
+          else
+            return `EXISTS(SELECT entity FROM metadata_properties where entity = E.entity AND property = ${prop} AND value = ${val})`
         }
         break;
 

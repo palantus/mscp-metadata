@@ -16,7 +16,7 @@ class Handler{
   async initFirst(){
     this.global.dbOptions = this.mscp.setupHandler.setup.database
 
-    if(!this.global.dbOptions.driver)
+    if(!this.global.dbOptions || !this.global.dbOptions.driver)
       throw "Please select database driver (either mysql or sqlite) in setup.json"
 
     this.global.queryParser = new SearchQueryParser()
@@ -43,7 +43,7 @@ class Handler{
           }
         }])
       } else if(this.global.dbOptions.driver == "sqlite"){
-        console.log([query].concat(args))
+        //console.log([query].concat(args))
         conn.all.apply(conn, [query].concat(args).concat([(err, res) => {
           if(err){
             console.log(err)
@@ -75,7 +75,7 @@ class Handler{
       return this.global.dbPool
     } else if(this.global.dbOptions.driver == "sqlite"){
       if(!sqlite)
-        sqlite = require("sqlite3").verbose();
+        sqlite = require("sqlite3");
 
       if(!this.global.db){
         let filename = this.global.dbOptions.file

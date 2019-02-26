@@ -22,7 +22,7 @@ Sample setup.json (sqlite):
     "http_port": 9005,
     "database": {
       "driver"   : "sqlite",
-      "file"     : "my.db"
+      "file"     : "metadata.db"
     }
 }
 ```
